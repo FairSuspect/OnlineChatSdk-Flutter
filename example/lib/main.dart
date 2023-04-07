@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:onlinechatsdk/chat_config.dart';
 import 'package:onlinechatsdk/chat_view.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await ChatConfig.getInstance();
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
 
   // This widget is the root of your application.
   @override
@@ -15,11 +17,12 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'OnlineChatSdk-Flutter Demo',
       home: ChatView(
-        id: "593adecd804fc4e32e7e865d659f2356",
-        domain: "sms-tx.ru",
+        id: "c627e098d16799b42125ecd99707e29c",
+        domain: "freshauto.ru",
         language: "ru",
         clientId: "",
-        apiToken: "",
+        apiToken:
+            "111d3xfvibi9prlcyfnasunud620omcqefty6jyghe459xh3emqiuzlr49yz68d2",
         onOperatorSendMessage: (String data) {},
         onClientSendMessage: (String data) {},
         onClientMakeSubscribe: (String data) {},

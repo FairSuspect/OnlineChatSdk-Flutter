@@ -3,13 +3,14 @@ import 'dart:collection';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ChatConfig {
-
   static void setLastDateTimeNewMessage(String value) async {
-    (await getInstance())._setConfig(ChatConfig.configKeyLastDateTimeNewMessage, value);
+    (await getInstance())
+        ._setConfig(ChatConfig.configKeyLastDateTimeNewMessage, value);
   }
 
   static Future<String> getLastDateTimeNewMessage() async {
-    return (await getInstance())._getConfigString(ChatConfig.configKeyLastDateTimeNewMessage, "");
+    return (await getInstance())
+        ._getConfigString(ChatConfig.configKeyLastDateTimeNewMessage, "");
   }
 
   static void setClientId(String clientId) async {
@@ -17,26 +18,31 @@ class ChatConfig {
   }
 
   static Future<String> getClientId() async {
-    return (await getInstance())._getConfigString(ChatConfig.configKeyClientId, "");
+    return (await getInstance())
+        ._getConfigString(ChatConfig.configKeyClientId, "");
   }
 
   static void setApiToken(String token) async {
-    (await getInstance())._setConfig(ChatConfig.configKeyApiToken, token);
+    final instance = await getInstance();
+    instance._setConfig(ChatConfig.configKeyApiToken, token);
   }
 
   static Future<String> getApiToken() async {
-    return (await getInstance())._getConfigString(ChatConfig.configKeyApiToken, "");
+    return (await getInstance())
+        ._getConfigString(ChatConfig.configKeyApiToken, "");
   }
 
   static const String configKeyApiToken = "apiToken";
   static const String configKeyClientId = "clientId";
-  static const String configKeyLastDateTimeNewMessage = "lastDateTimeNewMessage";
+  static const String configKeyLastDateTimeNewMessage =
+      "lastDateTimeNewMessage";
   static ChatConfig? _instance;
-  
+
   late final SharedPreferences _config;
 
   Future<void> init() async {
     _config = await SharedPreferences.getInstance();
+    print(_config);
   }
 
   void _setConfig(String key, dynamic value) {

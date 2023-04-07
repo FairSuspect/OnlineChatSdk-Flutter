@@ -1,8 +1,6 @@
 import 'dart:ffi';
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:intl/intl.dart';
 import 'package:onlinechatsdk/chat_api.dart';
 import 'package:onlinechatsdk/chat_api_messages_wrapper.dart';
 import 'package:onlinechatsdk/chat_config.dart';
@@ -11,27 +9,56 @@ import 'package:onlinechatsdk/command.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:collection';
 
-class ChatView extends StatelessWidget {
+class ChatView extends StatefulWidget {
+  final String id;
+  final String domain;
+  final String language;
+  final String clientId;
+  final String apiToken;
+  final void Function(String data)? onOperatorSendMessage;
+  final void Function(String data)? onClientSendMessage;
+  final void Function(String data)? onClientMakeSubscribe;
+  final void Function(String data)? onContactsUpdated;
+  final void Function(String data)? onSendRate;
+  final void Function(String data)? onClientId;
+  final void Function()? onCloseSupport;
+  final void Function(String data)? onFullyLoaded;
 
-  static Future<Map<String, dynamic>> _getUnreadedMessages(String startDate) async {
+  const ChatView({
+    super.key,
+    required this.id,
+    required this.domain,
+    required this.language,
+    required this.clientId,
+    required this.apiToken,
+    this.onOperatorSendMessage,
+    this.onClientSendMessage,
+    this.onClientMakeSubscribe,
+    this.onContactsUpdated,
+    this.onSendRate,
+    this.onClientId,
+    this.onCloseSupport,
+    this.onFullyLoaded,
+  });
+
+  @override
+  State<ChatView> createState() => _ChatViewState();
+}
+
+class _ChatViewState extends State<ChatView> {
+  Future<Map<String, dynamic>> _getUnreadedMessages(String startDate) async {
     var clientId = await ChatConfig.getClientId();
     var apiToken = await ChatConfig.getApiToken();
     if (apiToken.isEmpty) {
       return {
         'success': false,
-        'error': {
-          'code': 0,
-          'descr': 'Не задан token'
-        }
+        'error': {'code': 0, 'descr': 'Не задан token'}
       };
     }
     if (clientId.isEmpty) {
       return {
         'success': false,
-        'error': {
-          'code': 0,
-          'descr': 'Не задан clientId'
-        }
+        'error': {'code': 0, 'descr': 'Не задан clientId'}
       };
     }
 
@@ -40,27 +67,20 @@ class ChatView extends StatelessWidget {
       startDate = chatDateTime.current(-86400000 * 14);
     }
 
-    var response = await ChatApi().messages(
-      apiToken,
-      {
-        "client": {
-          "clientId": clientId
-        },
-        "sender": "operator",
-        "status": "unreaded",
-        "dateRange": {
-          "start": startDate,
-          "stop": chatDateTime.current(0)
-        }
-      }
-    );
+    var response = await ChatApi().messages(apiToken, {
+      "client": {"clientId": clientId},
+      "sender": "operator",
+      "status": "unreaded",
+      "dateRange": {"start": startDate, "stop": chatDateTime.current(0)}
+    });
     var resultWrapper = ChatApiMessagesWrapper(response);
     if (resultWrapper.getMessages().isEmpty) {
       return resultWrapper.getResult();
     }
     List<Map<String, dynamic>> unreadedMessages = [];
     resultWrapper.getMessages().forEach((element) {
-      if (element["isVisibleForClient"] != null && element["isVisibleForClient"]) {
+      if (element["isVisibleForClient"] != null &&
+          element["isVisibleForClient"]) {
         unreadedMessages.add(element);
       }
     });
@@ -68,112 +88,91 @@ class ChatView extends StatelessWidget {
     return resultWrapper.getResult();
   }
 
-  static Future<Map<String, dynamic>> getUnreadedMessages() async {
+  Future<Map<String, dynamic>> getUnreadedMessages() async {
     return _getUnreadedMessages(
       '',
     );
   }
 
-  static Future<Map<String, dynamic>> getNewMessages() async {
+  Future<Map<String, dynamic>> getNewMessages() async {
     String startDate = await ChatConfig.getLastDateTimeNewMessage();
     Map<String, dynamic> result = await _getUnreadedMessages(startDate);
     ChatApiMessagesWrapper resultWrapper = ChatApiMessagesWrapper(result);
     if (resultWrapper.getMessages().isEmpty) {
-      ChatConfig.setLastDateTimeNewMessage( ChatDateTime().current(0) );
+      ChatConfig.setLastDateTimeNewMessage(ChatDateTime().current(0));
       return resultWrapper.getResult();
     }
 
-    Map<String, dynamic> lastMessage = resultWrapper.getMessages()[resultWrapper.getMessages().length - 1];
+    Map<String, dynamic> lastMessage =
+        resultWrapper.getMessages()[resultWrapper.getMessages().length - 1];
     String lastDate = lastMessage['dateTime'];
-    ChatConfig.setLastDateTimeNewMessage(
-        ChatDateTime().getNextDate(lastDate)
-    );
+    ChatConfig.setLastDateTimeNewMessage(ChatDateTime().getNextDate(lastDate));
     return resultWrapper.getResult();
   }
 
-  final String _eventOperatorSendMessage = "operatorSendMessage";
-  final String _eventClientSendMessage = "clientSendMessage";
-  final String _eventClientMakeSubscribe = "clientMakeSubscribe";
-  final String _eventContactsUpdated = "contactsUpdated";
-  final String _eventSendRate = "sendRate";
-  final String _eventClientId = "clientId";
-  final String _eventCloseSupport = "closeSupport";
-  final String _eventFullyLoaded = "fullyLoaded";
-  final String _eventGetContacts = "getContacts";
+  static const String _eventOperatorSendMessage = "operatorSendMessage";
 
-  final String _methodSetClientInfo = "setClientInfo";
-  final String _methodSetTarget = "setTarget";
-  final String _methodOpenReviewsTab = "openReviewsTab";
-  final String _methodOpenTab = "openTab";
-  final String _methodSendMessage = "sendMessage";
-  final String _methodReceiveMessage = "receiveMessage";
-  final String _methodSetOperator = "setOperator";
-  final String _methodGetContacts = "getContacts";
-  final String _methodGetClientId = "getClientId";
-  final String _methodDestroy = "destroy";
-  final String _methodSetCallback = "setCallback";
+  static const String _eventClientSendMessage = "clientSendMessage";
 
-  final String id;
-  final String domain;
-  final String language;
-  final String clientId;
-  final String apiToken;
-  final void Function(String data) onOperatorSendMessage;
-  final void Function(String data) onClientSendMessage;
-  final void Function(String data) onClientMakeSubscribe;
-  final void Function(String data) onContactsUpdated;
-  final void Function(String data) onSendRate;
-  final void Function(String data) onClientId;
-  final void Function() onCloseSupport;
-  final void Function(String data) onFullyLoaded;
-  void Function(String data)? onGetContacts = null;
+  static const String _eventClientMakeSubscribe = "clientMakeSubscribe";
+
+  static const String _eventContactsUpdated = "contactsUpdated";
+
+  static const String _eventSendRate = "sendRate";
+
+  static const String _eventClientId = "clientId";
+
+  static const String _eventCloseSupport = "closeSupport";
+
+  static const String _eventFullyLoaded = "fullyLoaded";
+
+  static const String _eventGetContacts = "getContacts";
+
+  static const String _methodSetClientInfo = "setClientInfo";
+
+  static const String _methodSetTarget = "setTarget";
+
+  static const String _methodOpenReviewsTab = "openReviewsTab";
+
+  static const String _methodOpenTab = "openTab";
+
+  static const String _methodSendMessage = "sendMessage";
+
+  static const String _methodReceiveMessage = "receiveMessage";
+
+  static const String _methodSetOperator = "setOperator";
+
+  static const String _methodGetContacts = "getContacts";
+
+  static const String _methodGetClientId = "getClientId";
+
+  static const String _methodDestroy = "destroy";
+
+  static const String _methodSetCallback = "setCallback";
+
+  void Function(String data)? onGetContacts;
+
   var destroyed = false;
 
   // only version 6.0
-  // final InAppWebViewSettings _settings = InAppWebViewSettings(
-  //     useShouldOverrideUrlLoading: true,
-  //     mediaPlaybackRequiresUserGesture: false,
-  //     allowsInlineMediaPlayback: true,
-  //     iframeAllow: "camera; microphone",
-  //     iframeAllowFullscreen: true
-  // );
-
   InAppWebViewController? _webViewController;
+
   InAppWebView? _chatWebView;
-
-  ChatView({
-    super.key,
-    required this.id,
-    required this.domain,
-    required this.language,
-    required this.clientId,
-    required this.apiToken,
-    required this.onOperatorSendMessage,
-    required this.onClientSendMessage,
-    required this.onClientMakeSubscribe,
-    required this.onContactsUpdated,
-    required this.onSendRate,
-    required this.onClientId,
-    required this.onCloseSupport,
-    required this.onFullyLoaded
-  }) {
-
-  }
 
   String _getSetup() {
     StringBuffer result = StringBuffer();
     result.write('?');
-    if (language.isNotEmpty) {
+    if (widget.language.isNotEmpty) {
       result.write('setup={');
-      result.write('"language":"$language"');
+      result.write('"language":"${widget.language}"');
     }
-    if (clientId.isNotEmpty) {
+    if (widget.clientId.isNotEmpty) {
       if (result.isEmpty) {
         result.write('setup={');
       } else {
         result.write(',');
       }
-      result.write('"clientId":"$clientId"');
+      result.write('"clientId":"${widget.clientId}"');
     }
     if (result.isNotEmpty) {
       result.write('}');
@@ -185,84 +184,96 @@ class ChatView extends StatelessWidget {
 
   Map<String, dynamic> getSetupObj() {
     StringBuffer setup = StringBuffer();
-    if (language.isNotEmpty) {
+    if (widget.language.isNotEmpty) {
       setup.write('{');
-      setup.write('"language":"$language"');
+      setup.write('"language":"${widget.language}"');
     }
-    if (clientId.isNotEmpty) {
+    if (widget.clientId.isNotEmpty) {
       if (setup.isEmpty) {
         setup.write('{');
       } else {
         setup.write(',');
       }
-      setup.write('"clientId":"$clientId"');
+      setup.write('"clientId":"${widget.clientId}"');
     }
     if (setup.isNotEmpty) {
       setup.write('}');
-      return {
-        'setup': setup.toString(),
-        'sdk-show-close-button': '1'
-      };
+      return {'setup': setup.toString(), 'sdk-show-close-button': '1'};
     }
-    return {
-      'sdk-show-close-button': '1'
-    };
+    return {'sdk-show-close-button': '1'};
   }
 
   String _getWidgetUrl() {
-    return 'https://admin.verbox.ru/support/chat/$id/$domain${_getSetup()}';
+    return 'https://admin.verbox.ru/support/chat/${widget.id}/${widget.domain}${_getSetup()}';
   }
 
   Uri _getWidgetUrlObj() {
-    return Uri.https('admin.verbox.ru', '/support/chat/$id/$domain', getSetupObj());
+    return Uri.https('admin.verbox.ru',
+        '/support/chat/${widget.id}/${widget.domain}', getSetupObj());
   }
 
   @override
   Widget build(BuildContext context) {
     _chatWebView = InAppWebView(
       // initialUrlRequest: URLRequest(url: WebUri( _getWidgetUrl() )),  // only version 6.0
-      initialUrlRequest: URLRequest(url: _getWidgetUrlObj() ),
+      initialUrlRequest: URLRequest(url: _getWidgetUrlObj()),
       initialUserScripts: UnmodifiableListView<UserScript>([]),
       // initialSettings: _settings,  // only version 6.0
       onWebViewCreated: (controller) async {
         _webViewController = controller;
-        _webViewController!.addJavaScriptHandler(handlerName: 'channel_$_eventOperatorSendMessage', callback: (data) {
-          onOperatorSendMessage(data[0]);
-        });
-        _webViewController!.addJavaScriptHandler(handlerName: 'channel_$_eventClientSendMessage', callback: (data) {
-          onClientSendMessage(data[0]);
-        });
-        _webViewController!.addJavaScriptHandler(handlerName: 'channel_$_eventClientMakeSubscribe', callback: (data) {
-          onClientMakeSubscribe(data[0]);
-        });
-        _webViewController!.addJavaScriptHandler(handlerName: 'channel_$_eventContactsUpdated', callback: (data) {
-          onContactsUpdated(data[0]);
-        });
-        _webViewController!.addJavaScriptHandler(handlerName: 'channel_$_eventSendRate', callback: (data) {
-          onSendRate(data[0]);
-        });
-        _webViewController!.addJavaScriptHandler(handlerName: 'channel_$_eventClientId', callback: (data) {
-          ChatConfig.setClientId(data[0]);
-          ChatConfig.setApiToken(apiToken);
-          onClientId(data[0]);
-        });
-        _webViewController!.addJavaScriptHandler(handlerName: 'channel_$_eventCloseSupport', callback: (data) {
-          _destroy();
-        });
-        _webViewController!.addJavaScriptHandler(handlerName: 'channel_$_eventFullyLoaded', callback: (data) {
-          onFullyLoaded(data[0]);
-          callJsGetClientId();
-        });
-        _webViewController!.addJavaScriptHandler(handlerName: 'channel_$_eventGetContacts', callback: (data) {
-          if (onGetContacts != null) {
-            onGetContacts!(data[0]);
-            onGetContacts = null;
-          }
-        });
+        _webViewController!.addJavaScriptHandler(
+            handlerName: 'channel_$_eventOperatorSendMessage',
+            callback: (data) {
+              widget.onOperatorSendMessage?.call(data[0]);
+            });
+        _webViewController!.addJavaScriptHandler(
+            handlerName: 'channel_$_eventClientSendMessage',
+            callback: (data) {
+              widget.onClientSendMessage?.call(data[0]);
+            });
+        _webViewController!.addJavaScriptHandler(
+            handlerName: 'channel_$_eventClientMakeSubscribe',
+            callback: (data) {
+              widget.onClientMakeSubscribe?.call(data[0]);
+            });
+        _webViewController!.addJavaScriptHandler(
+            handlerName: 'channel_$_eventContactsUpdated',
+            callback: (data) {
+              widget.onContactsUpdated?.call(data[0]);
+            });
+        _webViewController!.addJavaScriptHandler(
+            handlerName: 'channel_$_eventSendRate',
+            callback: (data) {
+              widget.onSendRate?.call(data[0]);
+            });
+        _webViewController!.addJavaScriptHandler(
+            handlerName: 'channel_$_eventClientId',
+            callback: (data) {
+              ChatConfig.setClientId(data[0]);
+              ChatConfig.setApiToken(widget.apiToken);
+              widget.onClientId?.call(data[0]);
+            });
+        _webViewController!.addJavaScriptHandler(
+            handlerName: 'channel_$_eventCloseSupport',
+            callback: (data) {
+              _destroy();
+            });
+        _webViewController!.addJavaScriptHandler(
+            handlerName: 'channel_$_eventFullyLoaded',
+            callback: (data) {
+              widget.onFullyLoaded?.call(data[0]);
+              callJsGetClientId();
+            });
+        _webViewController!.addJavaScriptHandler(
+            handlerName: 'channel_$_eventGetContacts',
+            callback: (data) {
+              if (onGetContacts != null) {
+                onGetContacts!(data[0]);
+                onGetContacts = null;
+              }
+            });
       },
-      onLoadStart: (controller, url) async {
-
-      },
+      onLoadStart: (controller, url) async {},
 
       // onLoadError: (InAppWebViewController controller, Uri? url, int code, String message) async {
       //   print("onLoadError ------------ ");
@@ -288,13 +299,14 @@ class ChatView extends StatelessWidget {
 
       shouldOverrideUrlLoading: (controller, navigationAction) async {
         var uri = navigationAction.request.url!;
-        if ([ Uri.encodeFull( _getWidgetUrl() ) ].contains(uri.toString())) {
+        if ([Uri.encodeFull(_getWidgetUrl())].contains(uri.toString())) {
           return NavigationActionPolicy.ALLOW;
         }
         if (['http', 'https'].contains(uri.scheme)) {
           await _launchInBrowser(uri);
           return NavigationActionPolicy.CANCEL;
-        } else if (!['file', 'chrome', 'data', 'javascript', 'about'].contains(uri.scheme)) {
+        } else if (!['file', 'chrome', 'data', 'javascript', 'about']
+            .contains(uri.scheme)) {
           if (await canLaunchUrl(uri)) {
             await launchUrl(uri);
             return NavigationActionPolicy.CANCEL;
@@ -304,32 +316,54 @@ class ChatView extends StatelessWidget {
       },
 
       onLoadStop: (controller, url) async {
-        _callJs(_getScriptCallJs(['"$_methodSetCallback"', '"$_eventOperatorSendMessage"', 'function(data){window.flutter_inappwebview.callHandler("channel_$_eventOperatorSendMessage", data);}']));
-        _callJs(_getScriptCallJs(['"$_methodSetCallback"', '"$_eventClientSendMessage"', 'function(data){window.flutter_inappwebview.callHandler("channel_$_eventClientSendMessage", data);}']));
-        _callJs(_getScriptCallJs(['"$_methodSetCallback"', '"$_eventClientMakeSubscribe"', 'function(data){window.flutter_inappwebview.callHandler("channel_$_eventClientMakeSubscribe", data);}']));
-        _callJs(_getScriptCallJs(['"$_methodSetCallback"', '"$_eventContactsUpdated"', 'function(data){window.flutter_inappwebview.callHandler("channel_$_eventContactsUpdated", data);}']));
-        _callJs(_getScriptCallJs(['"$_methodSetCallback"', '"$_eventSendRate"', 'function(data){window.flutter_inappwebview.callHandler("channel_$_eventSendRate", data);}']));
-        _callJs(_getScriptCallJs(['"$_methodSetCallback"', '"$_eventCloseSupport"', 'function(data){window.flutter_inappwebview.callHandler("channel_$_eventCloseSupport", "");}']));
-        _callJs(_getScriptCallJs(['"$_methodSetCallback"', '"$_eventFullyLoaded"', 'function(data){window.flutter_inappwebview.callHandler("channel_$_eventFullyLoaded", "");}']));
+        _callJs(_getScriptCallJs([
+          '"$_methodSetCallback"',
+          '"$_eventOperatorSendMessage"',
+          'function(data){window.flutter_inappwebview.callHandler("channel_$_eventOperatorSendMessage", data);}'
+        ]));
+        _callJs(_getScriptCallJs([
+          '"$_methodSetCallback"',
+          '"$_eventClientSendMessage"',
+          'function(data){window.flutter_inappwebview.callHandler("channel_$_eventClientSendMessage", data);}'
+        ]));
+        _callJs(_getScriptCallJs([
+          '"$_methodSetCallback"',
+          '"$_eventClientMakeSubscribe"',
+          'function(data){window.flutter_inappwebview.callHandler("channel_$_eventClientMakeSubscribe", data);}'
+        ]));
+        _callJs(_getScriptCallJs([
+          '"$_methodSetCallback"',
+          '"$_eventContactsUpdated"',
+          'function(data){window.flutter_inappwebview.callHandler("channel_$_eventContactsUpdated", data);}'
+        ]));
+        _callJs(_getScriptCallJs([
+          '"$_methodSetCallback"',
+          '"$_eventSendRate"',
+          'function(data){window.flutter_inappwebview.callHandler("channel_$_eventSendRate", data);}'
+        ]));
+        _callJs(_getScriptCallJs([
+          '"$_methodSetCallback"',
+          '"$_eventCloseSupport"',
+          'function(data){window.flutter_inappwebview.callHandler("channel_$_eventCloseSupport", "");}'
+        ]));
+        _callJs(_getScriptCallJs([
+          '"$_methodSetCallback"',
+          '"$_eventFullyLoaded"',
+          'function(data){window.flutter_inappwebview.callHandler("channel_$_eventFullyLoaded", "");}'
+        ]));
       },
       // onReceivedError: (controller, request, error) {
       //
       // },
-      onProgressChanged: (controller, progress) {
-
-      },
-      onUpdateVisitedHistory: (controller, url, isReload) {
-
-      },
+      onProgressChanged: (controller, progress) {},
+      onUpdateVisitedHistory: (controller, url, isReload) {},
       onConsoleMessage: (controller, consoleMessage) {
         // print(consoleMessage);
       },
     );
 
     return Scaffold(
-      body: SafeArea(
-          child: _chatWebView!
-      ),
+      body: SafeArea(child: _chatWebView!),
     );
   }
 
@@ -337,9 +371,7 @@ class ChatView extends StatelessWidget {
     if (!await launchUrl(
       url,
       mode: LaunchMode.externalApplication,
-    )) {
-
-    }
+    )) {}
   }
 
   void callJsSetClientInfo(String jsonInfo) {
@@ -363,7 +395,8 @@ class ChatView extends StatelessWidget {
   }
 
   void callJsReceiveMessage(String text, String operator, int simulateTyping) {
-    _callJs(_getScriptCallJsMethod(_methodReceiveMessage, [text, operator, simulateTyping]));
+    _callJs(_getScriptCallJsMethod(
+        _methodReceiveMessage, [text, operator, simulateTyping]));
   }
 
   void callJsSetOperator(String login) {
@@ -372,11 +405,17 @@ class ChatView extends StatelessWidget {
 
   void callJsGetContacts(Function(String data) callback) {
     onGetContacts = callback;
-    _callJs(_getScriptCallJsMethod(_methodGetContacts, [Command('function(data){window.flutter_inappwebview.callHandler("channel_$_eventGetContacts", data);}')]));
+    _callJs(_getScriptCallJsMethod(_methodGetContacts, [
+      Command(
+          'function(data){window.flutter_inappwebview.callHandler("channel_$_eventGetContacts", data);}')
+    ]));
   }
 
   void callJsGetClientId() {
-    _callJs(_getScriptCallJsMethod(_methodGetClientId, [Command('function(data){window.flutter_inappwebview.callHandler("channel_$_eventClientId", data);}')]));
+    _callJs(_getScriptCallJsMethod(_methodGetClientId, [
+      Command(
+          'function(data){window.flutter_inappwebview.callHandler("channel_$_eventClientId", data);}')
+    ]));
   }
 
   void _callJsDestroy() {
@@ -384,9 +423,7 @@ class ChatView extends StatelessWidget {
   }
 
   String _getScriptCallJsMethod(String method, List params) {
-    List<dynamic> result = [
-      '"$method"'
-    ];
+    List<dynamic> result = ['"$method"'];
     params.forEach((element) {
       if (element == null) {
         result.add('"null"');
@@ -432,6 +469,6 @@ class ChatView extends StatelessWidget {
     }
     destroyed = true;
     _callJsDestroy();
-    onCloseSupport();
+    widget.onCloseSupport?.call();
   }
 }
